@@ -4,14 +4,30 @@ from db import mongo
 from flask import request, jsonify
 from run_model import make_prediction
 from user import user_bp
+from email_sender import EmailSender
+
 
 app = Flask(__name__)
 app.register_blueprint(user_bp)  # Register the blueprint
+email_sender = EmailSender()
 
 
-@app.route('/')
-def hello_world():
-    return 'Hello, World!'
+@app.route('/api/send-email', methods=['POST'])
+def send_email():
+    data = request.get_json()
+
+    # Extract the email and otpVerified fields
+    email = data.get('emailId')
+    otp_verified = data.get('otpVerfied')
+
+    # Validate the data
+    if not email or otp_verified is None:
+        return jsonify({'error': 'Missing required parameter'}), 400
+
+    # Send the email
+    email_sender.send_email(email, otp_verified)
+
+    return jsonify({'message': 'Email sent successfully.'}), 200
 
 @app.route('/find')
 def find_document():

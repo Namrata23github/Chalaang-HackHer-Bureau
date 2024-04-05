@@ -2,11 +2,12 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
 from datetime import datetime
 from db import mongo
+from bson import ObjectId
+
 
 user_bp = Blueprint('user', __name__)
 @user_bp.route('/api/users/register', methods=['POST'])
 def registerUser():
-    # Extract data from the request body
     data = request.get_json()
 
     # Validate the data
@@ -17,10 +18,10 @@ def registerUser():
     if not username or not email or not password:
         return jsonify({'error': 'Missing required parameter'}), 400
 
-    # Check if the username or email already exists
-    existing_user = mongo.db.users.find_one({'$or': [{'username': username}, {'email': email}]})
-    if existing_user:
-        return jsonify({'error': 'Username or email already exists'}), 400
+    # # Check if the username or email already exists
+    # existing_user = mongo.db.users.find_one({'$or': [{'username': username}, {'email': email}]})
+    # if existing_user:
+    #     return jsonify({'error': 'Username or email already exists'}), 400
 
     # Hash the password
     hashed_password = generate_password_hash(password)
@@ -34,12 +35,28 @@ def registerUser():
     }
     result = mongo.db.users.insert_one(user)
 
-    # Return the new user's id, username, email, and created_at
     return jsonify({
         'id': str(result.inserted_id),
         'username': username,
         'email': email,
         'created_at': user['created_at'].strftime('%Y-%m-%d %H:%M:%S')
     }), 200
+
+
+@user_bp.route('/api/users/<userId>', methods=['GET'])
+def getUser(userId):
+    user = mongo.db.users.find_one({'_id': ObjectId(userId)})
+
+    # If the user is found
+    if user:
+        return jsonify({
+            'id': str(user['_id']),
+            'username': user['username'],
+            'email': user['email'],
+            'created_at': user['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+        }), 200
+    else:
+        # If the user is not found, return an error message
+        return jsonify({'error': 'User not found'}), 404
 
 

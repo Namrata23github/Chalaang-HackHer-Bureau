@@ -3,6 +3,7 @@ from utils import  calculate_distance
 import numpy as np
 from model.arima import predict
 from sklearn.preprocessing import OneHotEncoder
+import pandas as pd
 
 
 def rule_1( data):
@@ -18,18 +19,19 @@ def rule_1( data):
 
 def rule_2( data):
     print("rule 2")
+    transactions = pd.read_csv('dataset/synthetic_data_rule.csv', on_bad_lines='warn')
     locations = [(float(data["latitude"]), float(data["longitude"]))]
     total_amount = float(data["transactionAmount"])
     start_time = datetime.strptime(data["dateTimeTransaction"], '%d%m%y%H%M')
     end_time = start_time + timedelta(hours=12)
 
-    # for trans in transactions:
-    #     trans_time = datetime.strptime(trans["dateTimeTransaction"], '%d%m%y%H%M')
-    #     if start_time <= trans_time <= end_time:
-    #         total_amount += float(trans["transactionAmount"])
-    #         for loc in locations:
-    #             if calculate_distance(float(trans["latitude"]), float(trans["longitude"]), loc[0], loc[1]) >= 200:
-    #                 locations.append((float(trans["latitude"]), float(trans["longitude"])))
+    for index, trans in transactions.iterrows():
+        trans_time = datetime.strptime(trans["dateTimeTransaction"], '%Y-%m-%d %H:%M:%S')
+        if start_time <= trans_time <= end_time:
+            total_amount += float(trans["transactionAmount"])
+            for loc in locations:
+                if calculate_distance(float(trans["latitude"]), float(trans["longitude"]), loc[0], loc[1]) >= 200:
+                    locations.append((float(trans["latitude"]), float(trans["longitude"])))
 
     if len(locations) > 5 and total_amount > 100000:
         return "ALERT", "RULE-002"
@@ -41,7 +43,9 @@ def prepare_data(transaction):
     encoder = OneHotEncoder()
     one_hot = encoder.fit_transform(np.array(transaction['channel']).reshape(-1, 1))
 
-# Extract numerical features from the transaction
+    # Convert csr_matrix to numpy array and flatten it
+    one_hot_array = one_hot.toarray().flatten()
+
     # Convert boolean values to integer
     preValidated = int(transaction['preValidated'])
     enhancedLimitWhiteListing = int(transaction['enhancedLimitWhiteListing'])
@@ -64,7 +68,7 @@ def prepare_data(transaction):
         isTokenized,
         moneySendTxn,
         authorisationStatus,
-        one_hot,
+        *one_hot_array,  # use the * operator to unpack the array
         float(transaction['latitude']),
         float(transaction['longitude'])
     ]

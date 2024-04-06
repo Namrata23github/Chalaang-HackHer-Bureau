@@ -3,11 +3,9 @@ from sklearn.neighbors import LocalOutlierFactor
 import scipy.sparse
 
 def predict(data, num_neighbors = 20):
-
-    # Create a csr_matrix
-
-    # Convert csr_matrix to numpy array
+    # Check if data is a sparse matrix
     if isinstance(data, scipy.sparse.csr.csr_matrix):
+        # Convert csr_matrix to numpy array
         data = data.toarray()
 
     # Fit the model

@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from pyod.models.lof import LOF
 from haversine import haversine
 from sklearn.metrics import precision_score, recall_score, f1_score
-
+import threading
 
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
@@ -33,6 +33,22 @@ df = pd.DataFrame(transaction_data)
 @app.route('/')
 def hello():
     return "hello"
+
+@app.route('/createDummyData', methods=['POST'])
+def create_dummy_api():
+    thread = threading.Thread(target=createDummy)
+    thread.start()
+    return jsonify({'message': 'Training started'}), 200
+
+def createDummy():
+    data = list(collection.find({}, {'_id': 0}))
+
+    # Create 1000 new documents
+    for i in range(1000):
+
+        new_document = data[i % len(data)]
+        new_document['_id'] = i
+        collection.insert_one(new_document)
 
 
 @app.route('/detect_suspicious_activity', methods=['POST'])

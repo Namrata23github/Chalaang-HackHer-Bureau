@@ -7,14 +7,13 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime, timedelta
 import json
-import threading
 
 from pyod.models.auto_encoder import AutoEncoder
 from sklearn.model_selection import train_test_split
 from pyod.models.lof import LOF
 from haversine import haversine
 from sklearn.metrics import precision_score, recall_score, f1_score
-
+import threading
 
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
@@ -27,22 +26,13 @@ client = MongoClient('mongodb://localhost:27017/')
 db = client['fraud_detection']
 collection = db['fraudData']
 
+# Extract data from MongoDB
+transaction_data = list(collection.find({}, {'_id': 0}))
+df = pd.DataFrame(transaction_data)
+
 @app.route('/')
 def hello():
     return "hello"
-
-
-@app.route('/detect_suspicious_activity', methods=['POST'])
-def detect_suspicious_activity():
-    # Get the transaction data from the request
-    transaction_data = request.get_json()
-
-
-    # Analyze the transaction data and identify suspicious activity
-    output = check_rules(transaction_data)
-
-    return jsonify(output)
-
 
 @app.route('/createDummyData', methods=['POST'])
 def create_dummy_api():
@@ -61,27 +51,21 @@ def createDummy():
         collection.insert_one(new_document)
 
 
+@app.route('/detect_suspicious_activity', methods=['POST'])
+def detect_suspicious_activity():
+    # Get the transaction data from the request
+    transaction_data = request.get_json()
 
-@app.route('/train_model', methods=['POST'])
-def train_model_api():
-    thread = threading.Thread(target=train_model)
-    thread.start()
-    return jsonify({'message': 'Training started'}), 200
+    # Analyze the transaction data and identify suspicious activity
+    output = analyze_transaction_data(transaction_data)
 
+    return jsonify(output)
 
-def train_model():
-
-    # Extract data from MongoDB
-    transaction_data = list(collection.find({}, {'_id': 0}))
-    df = pd.DataFrame(transaction_data)
+def analyze_transaction_data(transaction_data):
     # Convert the input data to a pandas DataFrame
+    df = pd.DataFrame(transaction_data, index=[0])
 
-
-    df = pd.DataFrame(transaction_data)
-
-    columns_to_keep = ['dateTimeTransaction', 'dateLocalTransaction', 'timeLocalTransaction', 'transactionAmount' , 'cardBalance', 'latitude', ]  # replace with your column names
-
-# Preprocess the data
+    # Preprocess the data
     df['dateTimeTransaction'] = pd.to_datetime(df['dateTimeTransaction'], format='%Y%m%d%H%M%S', errors='coerce')
     df['dateLocalTransaction'] = pd.to_datetime(df['dateLocalTransaction'], format='%y%m%d', errors='coerce')
     df['timeLocalTransaction'] = pd.to_datetime(df['timeLocalTransaction'], format='%H%M%S', errors='coerce')
@@ -100,10 +84,6 @@ def train_model():
     # Split data into training and testing sets
     X = df.drop(['authorisationStatus', 'latitude', 'longitude'], axis=1)
     y = df['authorisationStatus']
-    print("+++++++")
-    print(X)
-    print(y)
-
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Import required models

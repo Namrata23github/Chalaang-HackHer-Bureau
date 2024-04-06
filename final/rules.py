@@ -39,7 +39,7 @@ def rule_2( data):
     else:
         return "OK", None
 
-def prepare_data(row):
+def prepare_data_rule3(row):
     transactions = pd.read_csv('dataset/synthetic_data_rule.csv', on_bad_lines='warn')
     row_df = pd.json_normalize(row)
 
@@ -74,7 +74,6 @@ def prepare_data(row):
             int(transaction['processingCode']),
             float(transaction['transactionAmount']),
             timestamp,
-            int(transaction['merchantCategoryCode']),
             int(transaction['posEntryMode']),
             float(transaction['cardBalance']),
             preValidated,
@@ -84,8 +83,27 @@ def prepare_data(row):
             moneySendTxn,
             authorisationStatus,
             *one_hot_array,  # use the * operator to unpack the array
-            float(transaction['latitude']),
-            float(transaction['longitude'])
+        ]
+        data.append(features)
+    # Normalize data
+    scaler = StandardScaler()
+    data = scaler.fit_transform(data)
+    return np.array(data)
+
+def prepare_data_rule4(row):
+    data = []
+
+    transactions = pd.read_csv('dataset/synthetic_data_rule.csv', on_bad_lines='warn')
+    row_df = pd.json_normalize(row)
+
+    # Append row to transactions
+    transactions = pd.concat([transactions, row_df], ignore_index=True)
+
+    for _, transaction in transactions.iterrows():
+
+        # Extract numerical features from the transaction
+        features = [
+            int(transaction['merchantCategoryCode']),
         ]
         data.append(features)
     # Normalize data
@@ -95,7 +113,7 @@ def prepare_data(row):
 
 def rule_3( row):
     print("rule 3")
-    data = prepare_data(row)
+    data = prepare_data_rule3(row)
     y_pred = predict(data)
     if y_pred[0] == -1:
         return "ALERT", "RULE-003"
@@ -106,13 +124,18 @@ def rule_3( row):
 
 def rule_4( row):
     print("rule 4")
-    d = 0
+    data = prepare_data_rule4(row)
+    y_pred = predict(data)
+    if y_pred[0] == -1:
+        return "ALERT", "RULE-004"
+    else:
+        return "OK", None
 
 
 
 def check_rules(row):
     rule_violated = []
-    rules = [rule_1, rule_2, rule_3]
+    rules = [rule_1, rule_2, rule_3, rule_4]
     status = "OK"
     for rule in rules:
         status, rule_id = rule( row)

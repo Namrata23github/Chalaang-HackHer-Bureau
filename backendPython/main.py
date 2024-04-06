@@ -44,6 +44,24 @@ def detect_suspicious_activity():
     return jsonify(output)
 
 
+@app.route('/createDummyData', methods=['POST'])
+def create_dummy_api():
+    thread = threading.Thread(target=createDummy)
+    thread.start()
+    return jsonify({'message': 'Training started'}), 200
+
+def createDummy():
+    data = list(collection.find({}, {'_id': 0}))
+
+    # Create 1000 new documents
+    for i in range(1000):
+
+        new_document = data[i % len(data)]
+        new_document['_id'] = i
+        collection.insert_one(new_document)
+
+
+
 @app.route('/train_model', methods=['POST'])
 def train_model_api():
     thread = threading.Thread(target=train_model)
@@ -59,9 +77,11 @@ def train_model():
     # Convert the input data to a pandas DataFrame
 
 
-    df = pd.DataFrame(transaction_data, index=[0])
+    df = pd.DataFrame(transaction_data)
 
-    # Preprocess the data
+    columns_to_keep = ['dateTimeTransaction', 'dateLocalTransaction', 'timeLocalTransaction', 'transactionAmount' , 'cardBalance', 'latitude', ]  # replace with your column names
+
+# Preprocess the data
     df['dateTimeTransaction'] = pd.to_datetime(df['dateTimeTransaction'], format='%Y%m%d%H%M%S', errors='coerce')
     df['dateLocalTransaction'] = pd.to_datetime(df['dateLocalTransaction'], format='%y%m%d', errors='coerce')
     df['timeLocalTransaction'] = pd.to_datetime(df['timeLocalTransaction'], format='%H%M%S', errors='coerce')

@@ -114,11 +114,54 @@ def prepare_data_rule4(row):
 def rule_3( row):
     print("rule 3")
     data = prepare_data_rule3(row)
-    y_pred = predict(data)
-    if y_pred[0] == -1:
-        return "ALERT", "RULE-003"
-    else:
-        return "OK", None
+    predict_data = data[-1]
+    # Get the current time
+    now = datetime.now()
+    time_12_hours_ago = now - timedelta(hours=12)
+
+    transactions_12h = data[data[:, 2] >= time_12_hours_ago.timestamp()]
+
+    # Convert numpy array to DataFrame
+    transactions_12h_df = pd.DataFrame(transactions_12h)
+
+    if ( len(transactions_12h) > 0):
+        predict_data_df = pd.DataFrame(predict_data.reshape(1, -1))
+        transactions_12h = pd.concat([transactions_12h_df, predict_data_df], ignore_index=True)
+        y_pred = predict(transactions_12h, len(transactions_12h))
+        if y_pred[0] == -1:
+            return "ALERT", "RULE-003"
+
+    time_24_hours_ago = now - timedelta(hours=24)
+
+    transactions_24h = data[data[:, 2] >= time_24_hours_ago.timestamp()]
+
+    # Convert numpy array to DataFrame
+    transactions_24h_df = pd.DataFrame(transactions_24h)
+
+    if ( len(transactions_24h) > 0):
+        predict_data_df = pd.DataFrame(predict_data.reshape(1, -1))
+        transactions_24h = pd.concat([transactions_24h_df, predict_data_df], ignore_index=True)
+        y_pred = predict(transactions_24h, len(transactions_24h))
+        if y_pred[0] == -1:
+            return "ALERT", "RULE-003"
+
+        # Get the current time
+    time_7_days_ago = now - timedelta(days=7)
+
+    transactions_7d = data[data[:, 2] >= time_7_days_ago.timestamp()]
+
+    # Convert numpy array to DataFrame
+    transactions_7d_df = pd.DataFrame(transactions_7d)
+
+    if ( len(transactions_7d) > 0):
+        predict_data_df = pd.DataFrame(predict_data.reshape(1, -1))
+        transactions_7d = pd.concat([transactions_7d_df, predict_data_df], ignore_index=True)
+        y_pred = predict(transactions_7d, len(transactions_7d))
+        if y_pred[0] == -1:
+            return "ALERT", "RULE-003"
+
+    return "OK", None
+
 
 
 

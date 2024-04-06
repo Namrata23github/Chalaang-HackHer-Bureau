@@ -5,6 +5,10 @@ from rules import check_rules
 
 app = Flask(__name__)
 
+@app.route('/hello', methods=['GET'])
+def hello():
+    return jsonify({"message": "Hello, World!"})
+
 @app.route('/detect_suspicious_activity', methods=['POST'])
 def detect_suspicious_activity():
     transaction_data = request.get_json()

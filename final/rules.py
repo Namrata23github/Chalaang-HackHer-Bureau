@@ -27,7 +27,7 @@ def rule_2( data):
     end_time = start_time + timedelta(hours=12)
 
     for index, trans in transactions.iterrows():
-        trans_time = datetime.strptime(trans["dateTimeTransaction"], '%Y-%m-%d %H:%M:%S')
+        trans_time = datetime.fromtimestamp(trans["dateTimeTransaction"])
         if start_time <= trans_time <= end_time:
             total_amount += float(trans["transactionAmount"])
             for loc in locations:

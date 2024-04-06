@@ -4,6 +4,7 @@ import numpy as np
 from model.arima import predict
 from sklearn.preprocessing import OneHotEncoder
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 
 def rule_1( data):
@@ -38,42 +39,58 @@ def rule_2( data):
     else:
         return "OK", None
 
-def prepare_data(transaction):
+def prepare_data(row):
+    transactions = pd.read_csv('dataset/synthetic_data_rule.csv', on_bad_lines='warn')
+    row_df = pd.json_normalize(row)
+
+    # Create a copy of transactions before converting 'dateTimeTransaction' to timestamp
+    transactions_copy = transactions.copy()
+
+    row_df['dateTimeTransaction'] = row_df['dateTimeTransaction'].apply(lambda x: datetime.strptime(x, '%d%m%y%H%M').timestamp())
     data = []
-    encoder = OneHotEncoder()
-    one_hot = encoder.fit_transform(np.array(transaction['channel']).reshape(-1, 1))
 
-    # Convert csr_matrix to numpy array and flatten it
-    one_hot_array = one_hot.toarray().flatten()
+    # Append row to transactions
+    transactions = pd.concat([transactions, row_df], ignore_index=True)
 
-    # Convert boolean values to integer
-    preValidated = int(transaction['preValidated'])
-    enhancedLimitWhiteListing = int(transaction['enhancedLimitWhiteListing'])
-    isExternalAuth = int(transaction['isExternalAuth'])
-    isTokenized = int(transaction['isTokenized'])
-    moneySendTxn = int(transaction['moneySendTxn'])
-    authorisationStatus = int(transaction['authorisationStatus'])
+    for _, transaction in transactions.iterrows():
+        encoder = OneHotEncoder()
+        one_hot = encoder.fit_transform(np.array(transaction['channel']).reshape(-1, 1))
 
-    # Extract numerical features from the transaction
-    features = [
-        int(transaction['processingCode']),
-        float(transaction['transactionAmount']),
-        int(transaction['dateTimeTransaction']),
-        int(transaction['merchantCategoryCode']),
-        int(transaction['posEntryMode']),
-        float(transaction['cardBalance']),
-        preValidated,
-        enhancedLimitWhiteListing,
-        isExternalAuth,
-        isTokenized,
-        moneySendTxn,
-        authorisationStatus,
-        *one_hot_array,  # use the * operator to unpack the array
-        float(transaction['latitude']),
-        float(transaction['longitude'])
-    ]
+        # Use the original 'dateTimeTransaction' from transactions_copy
+        timestamp = pd.to_datetime(transaction['dateTimeTransaction']).timestamp()
+        # Convert csr_matrix to numpy array and flatten it
+        one_hot_array = one_hot.toarray().flatten()
 
-    data.append(features)
+        # Convert boolean values to integer
+        preValidated = int(transaction['preValidated'])
+        enhancedLimitWhiteListing = int(transaction['enhancedLimitWhiteListing'])
+        isExternalAuth = int(transaction['isExternalAuth'])
+        isTokenized = int(transaction['isTokenized'])
+        moneySendTxn = int(transaction['moneySendTxn'])
+        authorisationStatus = int(transaction['authorisationStatus'])
+
+        # Extract numerical features from the transaction
+        features = [
+            int(transaction['processingCode']),
+            float(transaction['transactionAmount']),
+            timestamp,
+            int(transaction['merchantCategoryCode']),
+            int(transaction['posEntryMode']),
+            float(transaction['cardBalance']),
+            preValidated,
+            enhancedLimitWhiteListing,
+            isExternalAuth,
+            isTokenized,
+            moneySendTxn,
+            authorisationStatus,
+            *one_hot_array,  # use the * operator to unpack the array
+            float(transaction['latitude']),
+            float(transaction['longitude'])
+        ]
+        data.append(features)
+    # Normalize data
+    scaler = StandardScaler()
+    data = scaler.fit_transform(data)
     return np.array(data)
 
 def rule_3( row):
@@ -95,7 +112,7 @@ def rule_4( row):
 
 def check_rules(row):
     rule_violated = []
-    rules = [rule_1, rule_2, rule_3, rule_4]
+    rules = [rule_1, rule_2, rule_3]
     status = "OK"
     for rule in rules:
         status, rule_id = rule( row)

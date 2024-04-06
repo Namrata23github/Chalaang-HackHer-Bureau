@@ -182,11 +182,12 @@ def check_rules(row):
     status = "OK"
     for rule in rules:
         status, rule_id = rule( row)
+        print(status, rule_id)
         if status == "ALERT":
             rule_violated.append(rule_id)
             status = "ALERT"
     return {
-        "status": status,
+        "status": "OK" if len(rule_violated) == 0 else "ALERT",
         "ruleViolated": rule_violated,
         "timestamp": str(int(datetime.now().timestamp()))
     }
